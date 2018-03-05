@@ -36,10 +36,21 @@ App = {
     return App.initContract();
   },
 
+  //Instantiate our smart contract so web3 knows where to find it and how it works.
+  //truffle-contract keeps information about the contract in sync with migrations, 
+  //so you don't need to change the contract's deployed address manually.
   initContract: function() {
-    /*
-     * Replace me...
-     */
+    $.getJSON('Adoption.json', function(data) {
+      //Get the necessary contract artifact file and instantiate it with truffle-contract
+      var AdoptionArtifact = data;
+      App.contracts.Adoption = TruffleContract(AdoptionArtifact);
+
+      //Set the provider for our contract
+      App.contracts.Adoption.setProvider(App.web3Provider);
+
+      //Use our contract to retrieve and mark the adopted pets
+      return App.markAdopted();
+    });
 
     return App.bindEvents();
   },
@@ -49,9 +60,27 @@ App = {
   },
 
   markAdopted: function(adopters, account) {
-    /*
-     * Replace me...
-     */
+    var adoptionInstance;
+
+    //Finds the deployed instance of the adoption contract
+    App.contracts.Adoption.deployed().then(function(instance){
+      adoptionInstance = instance;
+      //calls the getAdopters() funct 
+      //Using call() allows us to read data from the blockchain without having to send a full transaction, 
+      //meaning we won't have to spend any ether.
+      return adoptionInstance.getAdopters.call();
+    }).then(function(adopters){
+      for (var i = adopters.length - 1; i >= 0; i--) {
+        //Since the array contains address types, 
+        //Ethereum initializes the array with 16 empty addresses. 
+        //This is why we check for an empty address string rather than null or other falsey value.
+        if (adopters[i] !== '0x0000000000000000000000000000000000000000') {
+          $('.panel-pet').eq(i).find('button').text('Success').attr('disabled', true);
+        }
+      }
+    }).catch(function(err){
+      console.log(err.message);
+    })
   },
 
   handleAdopt: function(event) {
